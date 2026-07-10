@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# 打包产物
+deploy/
+dist/
+*.local.toml
+
+# 环境与密钥
+.env*
+*.pfx
+*.p12
+
+# 系统与编辑器
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# AI 本地配置
+.claude/
