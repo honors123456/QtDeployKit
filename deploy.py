@@ -68,6 +68,50 @@ def log(msg: str) -> None:
     print(msg, flush=True)
 
 
+def fmt_size(n: float) -> str:
+    for unit in ("B", "KB", "MB"):
+        if n < 1024:
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1024
+    return f"{n:.2f} GB"
+
+
+def run_streamed(cmd: list[str], indent: str = "      | ") -> int:
+    """运行子进程并把输出逐行实时透传到控制台(带缩进前缀)。"""
+    log(f"  $ {' '.join(cmd)}")
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         text=True, errors="replace", bufsize=1)
+    for line in p.stdout:
+        line = line.rstrip()
+        if line:
+            print(indent + line, flush=True)
+    return p.wait()
+
+
+_BIG_FILE = 128 * 1024 * 1024
+_CHUNK = 4 * 1024 * 1024
+
+
+def copy_with_progress(src: Path, dst: Path, indent: str = "      ",
+                       announce: bool = True) -> None:
+    """拷贝文件并显示进度:小文件打一行名字+大小,超过 128MB 的显示百分比。"""
+    size = src.stat().st_size
+    if size < _BIG_FILE:
+        shutil.copy2(src, dst)
+        if announce:
+            log(f"{indent}拷贝 {src.name}  ({fmt_size(size)})")
+        return
+    done = 0
+    with open(src, "rb") as fi, open(dst, "wb") as fo:
+        while chunk := fi.read(_CHUNK):
+            fo.write(chunk)
+            done += len(chunk)
+            print(f"\r{indent}拷贝 {src.name}  {done * 100 // size}%"
+                  f" ({fmt_size(done)}/{fmt_size(size)})", end="", flush=True)
+    print(flush=True)
+    shutil.copystat(src, dst)
+
+
 # ---------------------------------------------------------------- 配置
 
 def load_config(path: Path) -> dict:
@@ -320,10 +364,9 @@ def run_windeployqt(qt_bin: Path, exe_in_dist: Path, extra_args: list[str],
         qml_args += ["--qmldir", str(d)]
     cmd = [str(qt_bin / "windeployqt.exe"), "--release", "--no-compiler-runtime",
            *qml_args, *extra_args, str(exe_in_dist)]
-    log(f"  $ {' '.join(cmd)}")
-    r = subprocess.run(cmd, capture_output=True, text=True, errors="replace")
-    if r.returncode != 0:
-        raise DeployError(f"windeployqt 失败(退出码 {r.returncode}):\n{r.stdout}\n{r.stderr}")
+    rc = run_streamed(cmd)
+    if rc != 0:
+        raise DeployError(f"windeployqt 失败(退出码 {rc}),错误信息见上方输出")
 
 
 def copy_extra_files(cfg: dict, dist: Path) -> list[str]:
@@ -344,8 +387,9 @@ def copy_extra_files(cfg: dict, dist: Path) -> list[str]:
         for m in matches:
             if m.is_dir():
                 shutil.copytree(m, target_dir / m.name, dirs_exist_ok=True)
+                log(f"      拷贝目录 {m.name}\\")
             else:
-                shutil.copy2(m, target_dir / m.name)
+                copy_with_progress(m, target_dir / m.name)
             copied.append(m.name)
     return copied
 
@@ -378,9 +422,10 @@ def bulk_copy_search_dirs(search_dirs: list[Path], dist: Path) -> set[str]:
     for d in search_dirs:
         if not d.is_dir():
             raise DeployError(f"[deps].search_dirs 目录不存在:{d}")
+        log(f"      全量拷入 {d}:")
         for f in sorted(d.glob("*.dll")):
             if not (dist / f.name).exists():  # windeployqt/前面目录已放的不覆盖
-                shutil.copy2(f, dist / f.name)
+                copy_with_progress(f, dist / f.name, indent="        ")
             payload.add(f.name.lower())
     return payload
 
@@ -438,7 +483,7 @@ def scan_and_complete(dist: Path, search_dirs: list[Path], want_machine: str,
                     found = cand
                     break
             if found:
-                shutil.copy2(found, dist / found.name)
+                copy_with_progress(found, dist / found.name, announce=False)
                 report["copied"].append(f"{found.name}  <- {found.parent}")
                 queue.append(dist / found.name)
             elif is_system_dll(dep):
@@ -515,10 +560,9 @@ def generate_iss(cfg: dict, version: str, dist: Path, iscc: Path, machine: str,
 
 
 def run_iscc(iscc: Path, iss: Path, expected_setup: Path) -> Path:
-    log(f"  $ {iscc} {iss}")
-    r = subprocess.run([str(iscc), str(iss)], capture_output=True, text=True, errors="replace")
-    if r.returncode != 0:
-        raise DeployError(f"ISCC 编译失败(退出码 {r.returncode}):\n{r.stdout[-3000:]}\n{r.stderr[-1000:]}")
+    rc = run_streamed([str(iscc), str(iss)])
+    if rc != 0:
+        raise DeployError(f"ISCC 编译失败(退出码 {rc}),错误信息见上方输出")
     if not expected_setup.is_file():
         raise DeployError(f"ISCC 成功但没找到安装包:{expected_setup}")
     return expected_setup
@@ -600,6 +644,11 @@ def main() -> None:
     cfg = load_config(Path(args.config))
     exe: Path = cfg["exe"]
 
+    t_total = time.perf_counter()
+
+    def stage_done(t: float) -> None:
+        log(f"      阶段耗时 {time.perf_counter() - t:.1f}s")
+
     log(f"[1/6] 读取版本与架构:{exe.name}")
     version = get_file_version(exe)
     if not version or version == "0.0.0.0":
@@ -625,6 +674,7 @@ def main() -> None:
     log(f"      Qt: {qt_bin}" + (f"\n      ISCC: {iscc}" if iscc else ""))
 
     log("[3/6] windeployqt 收集")
+    t = time.perf_counter()
     dist = prepare_dist(cfg["out_dir"])
     exe_in_dist = dist / exe.name
     shutil.copy2(exe, exe_in_dist)
@@ -644,10 +694,13 @@ def main() -> None:
                 n_vc += 1
         log(f"      VC 运行时 DLL 直拷进包:{n_vc} 个(来自 {vc_path})")
     n_files = sum(1 for _ in dist.rglob("*") if _.is_file())
-    log(f"      dist 共 {n_files} 个文件(search_dirs 全量拷入 {len(payload)} 个 DLL,"
-        f"额外文件 {len(extra)} 个)")
+    total_size = sum(f.stat().st_size for f in dist.rglob("*") if f.is_file())
+    log(f"      dist 共 {n_files} 个文件、{fmt_size(total_size)}"
+        f"(search_dirs 全量拷入 {len(payload)} 个 DLL,额外文件 {len(extra)} 个)")
+    stage_done(t)
 
     log("[4/6] 依赖闭包扫描")
+    t = time.perf_counter()
     report = scan_and_complete(dist, cfg["search_dirs"], machine, frozenset(payload))
     if payload:
         log(f"      search_dirs 拷入的 {len(payload)} 个 DLL 中,"
@@ -667,6 +720,7 @@ def main() -> None:
         log("      警告: 程序依赖 VC 运行时,但 [installer].vc_redist 未配置,"
             "安装包将不含运行库(目标机需自装)")
     log("      依赖闭包完整")
+    stage_done(t)
 
     if args.smoke:
         smoke_test(exe_in_dist)
@@ -681,19 +735,21 @@ def main() -> None:
     if args.skip_installer:
         log("[6/6] 跳过安装包(--skip-installer)")
     else:
-        log("[6/6] 生成安装包")
+        log("[6/6] 生成安装包(大体量包 lzma2 压缩可能要几分钟到十几分钟,请耐心)")
+        t = time.perf_counter()
         iss, expected = generate_iss(cfg, version, dist, iscc, machine,
                                      vc_path if vc_mode == "installer" else None)
         setup = run_iscc(iscc, iss, expected)
         if cfg["sign_enabled"]:
             sign_file(cfg, setup)
+        stage_done(t)
 
     vc_desc = {"installer": f"内嵌 {vc_path.name if vc_path else ''} 静默安装(已装跳过)",
                "dlls": f"运行时 DLL 直拷进包(来自 {vc_path})",
                "": "未内嵌(目标机需自行安装,见下)"}[vc_mode]
     notes = write_notes(cfg, version, report, extra, setup, vc_desc)
     log("")
-    log("完成:")
+    log(f"完成(总耗时 {time.perf_counter() - t_total:.0f} 秒):")
     log(f"  绿色目录   {dist}")
     if setup:
         log(f"  安装包     {setup}  ({setup.stat().st_size / 1048576:.1f} MB)")
