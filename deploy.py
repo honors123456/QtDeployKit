@@ -73,8 +73,11 @@ def log(msg: str) -> None:
 def load_config(path: Path) -> dict:
     if not path.is_file():
         raise DeployError(f"配置文件不存在:{path}")
-    with open(path, "rb") as f:
-        cfg = tomllib.load(f)
+    try:
+        # utf-8-sig:容忍 Windows 记事本保存 UTF-8 时带的 BOM
+        cfg = tomllib.loads(path.read_text(encoding="utf-8-sig"))
+    except tomllib.TOMLDecodeError as e:
+        raise DeployError(f"配置文件 TOML 语法错误:{path}\n{e}")
 
     base = path.parent.resolve()
 
@@ -113,6 +116,7 @@ def load_config(path: Path) -> dict:
         "publisher": app.get("publisher", ""),
         "icon": icon,
         "qt_dir": resolve(cfg["qt"]["dir"]) if cfg.get("qt", {}).get("dir") else None,
+        "qml_dirs": [resolve(d) for d in cfg.get("qt", {}).get("qml_dirs", [])],
         "windeployqt_args": cfg.get("qt", {}).get("windeployqt_args", []),
         "search_dirs": [resolve(d) for d in deps.get("search_dirs", [])],
         "extra_files": [(resolve(s) if not any(c in s for c in "*?") else (base, s), d)
@@ -294,9 +298,15 @@ def prepare_dist(out_dir: Path) -> Path:
     return dist
 
 
-def run_windeployqt(qt_bin: Path, exe_in_dist: Path, extra_args: list[str]) -> None:
+def run_windeployqt(qt_bin: Path, exe_in_dist: Path, extra_args: list[str],
+                    qml_dirs: list[Path]) -> None:
+    qml_args = []
+    for d in qml_dirs:
+        if not d.is_dir():
+            raise DeployError(f"[qt].qml_dirs 目录不存在:{d}")
+        qml_args += ["--qmldir", str(d)]
     cmd = [str(qt_bin / "windeployqt.exe"), "--release", "--no-compiler-runtime",
-           *extra_args, str(exe_in_dist)]
+           *qml_args, *extra_args, str(exe_in_dist)]
     log(f"  $ {' '.join(cmd)}")
     r = subprocess.run(cmd, capture_output=True, text=True, errors="replace")
     if r.returncode != 0:
@@ -539,9 +549,11 @@ def main() -> None:
 
     log(f"[1/6] 读取版本与架构:{exe.name}")
     version = get_file_version(exe)
+    if version == "0.0.0.0":
+        version = None  # 版本资源存在但没设值,视同没有
     if not version:
         raise DeployError(
-            f"{exe.name} 没有 FileVersion 版本资源。\n"
+            f"{exe.name} 没有 FileVersion 版本资源(或值为 0.0.0.0,即工程没设版本)。\n"
             "请在工程里设置版本(版本号唯一来源,不在配置里重复维护):\n"
             "  qmake:  .pro 里加  VERSION = 1.2.3\n"
             "  CMake:  set_target_properties(app PROPERTIES VERSION 1.2.3) 并生成版本 rc\n"
@@ -568,7 +580,12 @@ def main() -> None:
     dist = prepare_dist(cfg["out_dir"])
     exe_in_dist = dist / exe.name
     shutil.copy2(exe, exe_in_dist)
-    run_windeployqt(qt_bin, exe_in_dist, cfg["windeployqt_args"])
+    run_windeployqt(qt_bin, exe_in_dist, cfg["windeployqt_args"], cfg["qml_dirs"])
+    if not cfg["qml_dirs"] and any((dist / n).exists() for n in ("Qt5Qml.dll", "Qt6Qml.dll")):
+        raise DeployError(
+            "程序链接了 QML(dist 里有 QtQml.dll),但配置没给 [qt].qml_dirs,\n"
+            "windeployqt 不会部署 qml 模块,打出的包在目标机上会白屏/报 QML 模块缺失。\n"
+            "请把 QML 源码所在目录(工程里 .qml 文件的根目录,可多个)填入 [qt].qml_dirs。")
     extra = copy_extra_files(cfg, dist)
     n_files = sum(1 for _ in dist.rglob("*") if _.is_file())
     log(f"      dist 共 {n_files} 个文件,额外文件 {len(extra)} 个")

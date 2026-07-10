@@ -21,6 +21,12 @@ v0.1 已跑通:MSVC x64 Qt 程序从 exe 到 setup.exe 的全流程可用。
 - [x] Inno 模板:VC Redist 静默安装(已装跳过)、权限模式 dialog、
       x86/x64 架构参数化、中文语言包存在时自动启用
 
+- [x] QML 支持:`[qt].qml_dirs` → `--qmldir`,已验证 QtQuick 模块正确部署
+      (Qt5 落在部署根目录而非 qml\ 子目录);程序链接 QML 却未配 qml_dirs
+      时报错拦截(2026-07-10)
+- [x] FileVersion 为 0.0.0.0(工程没设 VERSION)视同无版本,报错拦截
+- [x] 配置文件容忍 UTF-8 BOM(记事本保存会带),TOML 语法错误给出友好提示
+
 ## 进行中
 
 (无)
