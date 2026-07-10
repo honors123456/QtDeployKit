@@ -1,0 +1,2 @@
+# bat 必须 CRLF + ANSI/GBK 编码,cmd 对 LF 批处理会按错误字节位置断行
+*.bat text eol=crlf

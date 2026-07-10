@@ -15,6 +15,9 @@ v0.1 已跑通:MSVC x64 Qt 程序从 exe 到 setup.exe 的全流程可用。
 - [x] 端到端验证:designer.exe → 12.6 MB 安装包 → `/VERYSILENT /CURRENTUSER`
       静默安装 → 安装目录启动程序存活 → 静默卸载无残留
 - [x] `--smoke` 冒烟测试、`--skip-installer` 调试模式
+- [x] `start.bat` 双击/拖拽启动器:自动查找同目录 `*.deploy.toml`,带参、
+      自动查找、无配置报错三条路径均验证(2026-07-10;bat 必须 GBK+CRLF,
+      已用 .gitattributes 固定)
 - [x] Inno 模板:VC Redist 静默安装(已装跳过)、权限模式 dialog、
       x86/x64 架构参数化、中文语言包存在时自动启用
 

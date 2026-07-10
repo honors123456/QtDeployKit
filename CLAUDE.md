@@ -6,11 +6,11 @@ windeployqt + Inno Setup 一键打包工具。把 Qt/MSVC 项目的部署流程(
 
 ```
 QtDeployKit/
-├── deploy.py                 # 唯一入口,零第三方依赖
+├── deploy.py                 # 主脚本,零第三方依赖
+├── start.bat                 # 双击/拖拽启动器,与配置模板同级
+├── sample.deploy.toml        # 配置模板,新项目连同 start.bat 一起复制
 ├── templates/
 │   └── installer.iss.tpl     # Inno Setup 模板,占位符格式 @NAME@
-├── configs/
-│   └── sample.deploy.toml    # 配置模板,新项目复制这份
 ├── CLAUDE.md / ROADMAP.md / README.md
 ```
 
@@ -24,6 +24,8 @@ QtDeployKit/
 - VC 运行时绝不散拷 DLL,统一走安装包内嵌 VC Redist 静默安装。
 - 系统 DLL(kernel32、api-ms-win-* 等)绝不拷贝,内置白名单 + System32 存在性兜底判断。
 - deploy.py 只清理带 `.qtdeploykit` 标记文件的 dist 目录,拒绝删除来历不明的目录。
+- bat 脚本必须 GBK(ANSI)编码 + CRLF 换行(.gitattributes 已固定 eol):
+  cmd 对 LF/UTF-8 批处理会按错误字节位置断行,2026-07-10 踩过。
 
 ## 验证方式
 
