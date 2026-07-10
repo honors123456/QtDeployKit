@@ -18,7 +18,8 @@ QtDeployKit/
 
 - Python ≥ 3.11,**只用标准库**(`tomllib`、`ctypes`、`struct`、`winreg`),不引入第三方包。
 - 配置用 TOML;路径字段用单引号字面量(不转义反斜杠)。
-- 版本号唯一来源是 exe 的 FileVersion 资源;读不到就报错,不允许静默兜底。
+- 版本号从 exe 的 FileVersion 资源读,读不到(或全零)用默认 1.0,不强制、
+  不进安装包文件名;安装包命名固定 <name>-setup.exe,直接放打包工作目录。
 - 模板占位符用 `@NAME@`,不用 `{{}}`(与 Inno Setup 自身的 `{}` 常量语法冲突)。
 - 只支持 MSVC 工具链;MinGW 支持在 ROADMAP 待办里,未实现。
 - VC 运行时绝不散拷 DLL,统一走安装包内嵌 VC Redist 静默安装。

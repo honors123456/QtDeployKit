@@ -13,6 +13,7 @@ set "CONFIG=%~1"
 
 if "%CONFIG%"=="" (
     rem 没传参数:在本脚本所在目录找 *.deploy.toml
+    if exist "%~dp0deploy.toml" (set "CONFIG=%~dp0deploy.toml" & goto :found)
     for %%F in ("%~dp0*.deploy.toml") do (
         set "CONFIG=%%~fF"
         goto :found

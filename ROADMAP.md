@@ -24,8 +24,15 @@ v0.1 已跑通:MSVC x64 Qt 程序从 exe 到 setup.exe 的全流程可用。
 - [x] QML 支持:`[qt].qml_dirs` → `--qmldir`,已验证 QtQuick 模块正确部署
       (Qt5 落在部署根目录而非 qml\ 子目录);程序链接 QML 却未配 qml_dirs
       时报错拦截(2026-07-10)
-- [x] FileVersion 为 0.0.0.0(工程没设 VERSION)视同无版本,报错拦截
 - [x] 配置文件容忍 UTF-8 BOM(记事本保存会带),TOML 语法错误给出友好提示
+- [x] 需求变更(2026-07-10):版本号不强制,读不到 FileVersion 用默认 1.0,
+      只进安装包元数据;安装包直接落打包工作目录,命名 <name>-setup 不带版本
+- [x] search_dirs 改为全量拷贝语义:目录内所有 DLL 进包,闭包检查只走
+      exe 可达引用链,富余 DLL(如 debug 版)不误报缺依赖
+- [x] vc_redist 双模式:指向 vc_redist*.exe 内嵌静默安装;指向运行时 DLL
+      目录则直拷进包(app-local),两种均以 demo 验证
+- [x] 配置定名 deploy.toml,start.bat 优先查找;dist 清理保留标记文件到
+      最后,清理中断不再丢失目录身份;文件被占用给出人话提示
 
 ## 进行中
 
@@ -33,8 +40,9 @@ v0.1 已跑通:MSVC x64 Qt 程序从 exe 到 setup.exe 的全流程可用。
 
 ## 待办
 
-- [ ] 用一个真实业务项目(含 OpenCV 依赖)实测 search_dirs 自动补齐和
-      extra_files 动态加载 DLL 场景
+- [ ] K-LiveCellImage 真实项目端到端出包并在目标机验证(收集阶段已跑通,
+      安装包阶段待桌面残留 dist 清理后重跑)
+- [ ] vc_redist 内嵌 exe 安装模式在目标机实测(DLL 直拷模式已验证)
 - [ ] 在没装 Qt / VC 运行时的干净虚拟机里安装验证(本机验证无法覆盖
       「目标机缺运行库」场景)
 - [ ] vc_redist 配置后的安装包实测(本机已装运行时,Check 跳过分支未走到)

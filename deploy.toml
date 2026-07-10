@@ -1,0 +1,62 @@
+# QtDeployKit 项目配置模板 —— 复制到你的项目旁,按注释填写
+# 路径写法:用单引号字面量,反斜杠不用转义,如 'D:\Code\app.exe'
+# 相对路径相对于本配置文件所在目录
+
+[app]
+# 主程序(Release 构建)。版本号自动从 exe 的 FileVersion 读,读不到用默认 1.0,
+# 只写进安装包元数据,不影响安装包文件名
+exe = 'E:\K-LiveCellImage\bin\K-LiveCellImage.exe'
+name = "K-LiveCellImage"
+publisher = "dev"
+# 安装包图标(.ico),可留空
+icon = ''
+
+[qt]
+# Qt kit 目录(如 'C:\Qt\Qt5.12.12\5.12.12\msvc2017_64'),留空则从 PATH 探测 windeployqt。
+# 机器上装了多个 Qt 时务必显式指定,kit 混用是 0xc000012f 的典型来源
+dir = 'C:\Qt\Qt5.12.12\5.12.12\msvc2017_64'
+# QML 工程必填:QML 源码目录(工程里 .qml 文件的根目录,可写多个)。
+# windeployqt 据此扫描 import 语句并部署对应 qml 模块;程序链接了 QML
+# 却不填这里会直接报错拦截,因为打出来的包在目标机上必然白屏
+qml_dirs = ['E:\K-LiveCellImage']
+# 传给 windeployqt 的额外参数
+windeployqt_args = ['--no-translations', '--no-system-d3d-compiler', '--no-opengl-sw']
+
+[deps]
+# 第三方库/应用的 bin 目录列表:目录下所有 DLL 全量拷入包内(不含子目录),
+# 动态加载的 cudnn_*、ffmpeg 之类也一并带上;依赖闭包检查只校验被 exe 引用链
+# 实际用到的部分,富余的 DLL 仅随包携带。例:['D:\libs\opencv\x64\vc15\bin']
+search_dirs = ['E:\opencv\build\x64\vc16\bin','E:\K-LiveCellImage\bin']
+# 依赖扫描看不见的东西才写在这里(两类):
+#   1. 运行时动态加载的 DLL,如 OpenCV 的 opencv_videoio_ffmpeg*_64.dll
+#   2. 数据文件:模型、级联分类器 xml 等
+# 支持通配符;需要放子目录时用 { src = '...', dest = '子目录' }
+extra_files = ['E:\K-LiveCellImage\bin\model\*.kj','E:\K-LiveCellImage\bin\*.ini']
+# extra_files = [
+#     'D:\libs\opencv\x64\vc15\bin\opencv_videoio_ffmpeg*_64.dll',
+#     { src = 'assets\models\*.onnx', dest = 'models' },
+# ]
+
+[output]
+# 打包工作目录,产物:dist\(绿色目录)、<name>-setup.exe、installer.iss、DEPLOY_NOTES.md
+dir = 'C:\Users\lxx\Desktop\paakage'
+# 安装包文件名,留空则为 <name>-setup
+installer_name = ''
+
+[installer]
+# ISCC.exe 路径,留空则自动探测(PATH → 注册表 → 默认安装位置)
+iscc = ''
+# VC 运行时,两种写法:
+#   1. 指向 vc_redist.x64.exe(或其所在目录)→ 安装时静默安装,已装自动跳过
+#      官方下载:https://aka.ms/vs/17/release/vc_redist.x64.exe
+#   2. 指向存放 vcruntime140/msvcp140 等运行时 DLL 的目录 → 直拷进包(app-local)
+# 留空则安装包不含运行库,目标机需自装
+vc_redist = 'D:\依赖库\release'
+
+[signing]
+# 代码签名(可选)。启用后对主程序和安装包分别执行:signtool sign <args> <文件>
+# 证书凭据用证书存储指纹(/sha1)或证书名(/n),不要把密码写进本文件
+enabled = false
+signtool = 'signtool'
+args = []
+# args = ['/sha1', '你的证书指纹', '/fd', 'SHA256', '/t', 'http://timestamp.digicert.com']
