@@ -40,7 +40,7 @@ python deploy.py deploy.toml --smoke
 
 ```
 <output.dir>/
-├── dist/                # 完整的绿色可运行目录
+├── MyApp/               # 完整的绿色可运行目录，名称来自 [app].name
 ├── MyApp-setup.exe      # 安装包(命名不带版本号)
 ├── installer.iss        # 生成的 Inno Setup 脚本
 └── DEPLOY_NOTES.md      # 扫描报告 + 杀软/写权限注意事项
@@ -59,3 +59,4 @@ python deploy.py deploy.toml --smoke
 - 仅支持 MSVC 构建的 x64/x86 程序,MinGW 未支持。
 - 运行时动态加载的 DLL 在导入表里不可见:在 `search_dirs` 覆盖的目录里会随
   全量拷贝带上;不在的(以及模型等数据文件)需在 `deps.extra_files` 手工声明。
+  `extra_files` 支持文件、通配符和目录；目录会保留自身名称并递归复制全部内容。

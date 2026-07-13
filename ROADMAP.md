@@ -31,11 +31,13 @@ v0.1 已跑通:MSVC x64 Qt 程序从 exe 到 setup.exe 的全流程可用。
       exe 可达引用链,富余 DLL(如 debug 版)不误报缺依赖
 - [x] vc_redist 双模式:指向 vc_redist*.exe 内嵌静默安装;指向运行时 DLL
       目录则直拷进包(app-local),两种均以 demo 验证
-- [x] 配置定名 deploy.toml,start.bat 优先查找;dist 清理保留标记文件到
-      最后,清理中断不再丢失目录身份;文件被占用给出人话提示
+- [x] 配置定名 deploy.toml,start.bat 优先查找;绿色目录发布保留标记文件,
+      构建失败不覆盖上次可用目录;文件被占用给出人话提示
 
 - [x] 实时进度与详细输出(2026-07-10):windeployqt/ISCC 输出逐行透传;
       每个拷贝文件显示名字大小,>128MB 显示百分比进度;各阶段与总耗时统计
+- [x] 绿色目录改用 `[app].name` 命名;`deps.extra_files` 正式支持目录递归复制
+      并保留目录名(2026-07-13,目录复制与发布事务单元测试通过)
 
 ## 进行中
 
@@ -61,6 +63,9 @@ v0.1 已跑通:MSVC x64 Qt 程序从 exe 到 setup.exe 的全流程可用。
 2026-07-10:单元级(PE 解析/版本读取/DLL 归类)+ 扫描三分支 + 端到端
 (打包→安装→运行→卸载)全部通过,环境:Win10、Python 3.12.6、
 Qt 5.12.12 msvc2017_64、Inno Setup 6.3.3。
+
+2026-07-13:`python -m unittest discover -s tests -v` 通过,共 6 项;
+本次未重跑端到端打包。
 
 ## 待确认
 

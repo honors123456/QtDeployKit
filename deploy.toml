@@ -5,8 +5,8 @@
 [app]
 # 主程序(Release 构建)。版本号自动从 exe 的 FileVersion 读,读不到用默认 1.0,
 # 只写进安装包元数据,不影响安装包文件名
-exe = 'E:\K-LiveCellImage\bin\K-LiveCellImage.exe'
-name = "K-LiveCellImage"
+exe = 'E:\LED-DLP\bin\DMD-Biology(SoftDog).exe'
+name = "DMD-Biology"
 publisher = "dev"
 # 安装包图标(.ico),可留空
 icon = ''
@@ -18,28 +18,29 @@ dir = 'C:\Qt\Qt5.12.12\5.12.12\msvc2017_64'
 # QML 工程必填:QML 源码目录(工程里 .qml 文件的根目录,可写多个)。
 # windeployqt 据此扫描 import 语句并部署对应 qml 模块;程序链接了 QML
 # 却不填这里会直接报错拦截,因为打出来的包在目标机上必然白屏
-qml_dirs = ['E:\K-LiveCellImage']
+qml_dirs = ['E:\LED-DLP']
 # 传给 windeployqt 的额外参数
-windeployqt_args = ['--no-translations', '--no-system-d3d-compiler', '--no-opengl-sw']
+#windeployqt_args = ['--no-translations', '--no-system-d3d-compiler', '--no-opengl-sw']
 
 [deps]
 # 第三方库/应用的 bin 目录列表:目录下所有 DLL 全量拷入包内(不含子目录),
 # 动态加载的 cudnn_*、ffmpeg 之类也一并带上;依赖闭包检查只校验被 exe 引用链
 # 实际用到的部分,富余的 DLL 仅随包携带。例:['D:\libs\opencv\x64\vc15\bin']
-search_dirs = ['E:\opencv\build\x64\vc16\bin','E:\K-LiveCellImage\bin']
+search_dirs = ['E:\opencv\build\x64\vc16\bin','E:\LED-DLP\bin']
 # 依赖扫描看不见的东西才写在这里(两类):
 #   1. 运行时动态加载的 DLL,如 OpenCV 的 opencv_videoio_ffmpeg*_64.dll
 #   2. 数据文件:模型、级联分类器 xml 等
 # 支持通配符;需要放子目录时用 { src = '...', dest = '子目录' }
-extra_files = ['E:\K-LiveCellImage\bin\model\*.kj','E:\K-LiveCellImage\bin\*.ini']
+extra_files = ['E:\LED-DLP\bin\test','E:\LED-DLP\bin\*.ini','E:\LED-DLP\bin\Flash']
 # extra_files = [
 #     'D:\libs\opencv\x64\vc15\bin\opencv_videoio_ffmpeg*_64.dll',
 #     { src = 'assets\models\*.onnx', dest = 'models' },
+#     'assets\presets', # 复制为 <name>\presets\，包含全部子目录和文件
 # ]
 
 [output]
-# 打包工作目录,产物:dist\(绿色目录)、<name>-setup.exe、installer.iss、DEPLOY_NOTES.md
-dir = 'C:\Users\lxx\Desktop\paakage'
+# 打包工作目录,产物:<name>\(绿色目录)、<name>-setup.exe、installer.iss、DEPLOY_NOTES.md
+dir = 'C:\Users\lxx\Desktop\package'
 # 安装包文件名,留空则为 <name>-setup
 installer_name = ''
 
